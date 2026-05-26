@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     }
 
     // --- 1. FASE SUTRADARA (GEMINI PRO) ---
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
     
     const systemPrompt = `You are an elite cinematographer. Turn this raw idea into a highly detailed, professional prompt for an AI video generator. Focus on locking the facial identity from the reference image. The scene must look like it was shot on an ARRI Alexa LF with an 85mm lens, shallow depth of field, natural soft daylight, and earthy tones color grading. Raw idea: "${prompt_direction}". ONLY output the final English prompt text, no explanations.`;
 
