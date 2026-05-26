@@ -5,14 +5,13 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { image_character, prompt_direction } = body;
 
-    // Proteksi 1: Cek apakah kuncinya terbaca oleh server Vercel
     if (!process.env.GEMINI_API_KEY) {
       console.error("DETEKTIF LOG: GEMINI_API_KEY TIDAK DITEMUKAN DI SERVER VERCEL!");
       return NextResponse.json({ error: 'Kunci Gemini tidak terkonfigurasi di Vercel' }, { status: 500 });
     }
 
-    // --- 1. FASE SUTRADARA (GEMINI PRO) ---
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
+    // --- 1. FASE SUTRADARA (UPGRADE KE GEMINI 2.0 FLASH) ---
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
     
     const systemPrompt = `You are an elite cinematographer. Turn this raw idea into a highly detailed, professional prompt for an AI video generator. Focus on locking the facial identity from the reference image. The scene must look like it was shot on an ARRI Alexa LF with an 85mm lens, shallow depth of field, natural soft daylight, and earthy tones color grading. Raw idea: "${prompt_direction}". ONLY output the final English prompt text, no explanations.`;
 
@@ -26,7 +25,6 @@ export async function POST(req: Request) {
     
     const geminiData = await geminiRes.json();
     
-    // DETEKTIF LOG: Jika Google ngasih error, cetak alasan aslinya ke Vercel Logs!
     if (geminiData.error || !geminiData.candidates) {
       console.error("DETEKTIF LOG - GOOGLE GEMINI ERROR:", JSON.stringify(geminiData));
       return NextResponse.json({ 
