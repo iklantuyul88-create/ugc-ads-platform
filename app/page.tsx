@@ -9,9 +9,10 @@ export default function UGCPlatform() {
   const [productBase64, setProductBase64] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string>('');
   
+  // State baru untuk video dan status proses
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [loadingText, setLoadingText] = useState<string>('');
-  const [outputUrl, setOutputUrl] = useState<string | null>(null);
+  const [statusText, setStatusText] = useState<string>('');
+  const [outputVideo, setOutputVideo] = useState<string | null>(null);
 
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -34,88 +35,89 @@ export default function UGCPlatform() {
         if (type === 'character') setCharacterBase64(base64String);
         if (type === 'product') setProductBase64(base64String);
       } catch (error) {
-        console.error("Gagal mengonversi gambar:", error);
+        console.error("Gagal konversi:", error);
       }
     }
   };
 
-  const checkStatus = async (taskId: string) => {
+  // Fungsi Kurir: Cek resi ke server tiap 5 detik
+  const checkRunwayStatus = async (taskId: string) => {
     try {
-      const res = await fetch('/api/status', {
+      const response = await fetch('/api/status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskId })
       });
-      const data = await res.json();
+      
+      const data = await response.json();
 
       if (data.status === 'SUCCEEDED') {
-        // Runway biasanya mengirim URL hasil di dalam array output
-        const finalVideoUrl = data.output[0];
-        setOutputUrl(finalVideoUrl);
+        // Video berhasil dirender!
+        setOutputVideo(data.output[0]); // Mengambil link MP4 dari Runway
+        setStatusText('Render Selesai! Video siap diputar.');
         setIsGenerating(false);
-        setLoadingText('');
-        alert("Sintesis Selesai! Video iklan cinematic UGC siap diunduh.");
-      } else if (data.status === 'FAILED' || data.status === 'CANCELLED') {
-        alert("Render video gagal di server Runway.");
+      } else if (data.status === 'FAILED') {
+        alert("Runway gagal merender video ini. Coba gambar/prompt lain.");
+        setStatusText('');
         setIsGenerating(false);
-        setLoadingText('');
       } else {
-        // Jika masih PENDING atau RUNNING, cek lagi 5 detik kemudian
-        setTimeout(() => checkStatus(taskId), 5000);
+        // Jika masih PENDING atau RUNNING, tunggu 5 detik dan cek lagi
+        setStatusText(`Mesin Runway sedang bekerja... (Status: ${data.status})`);
+        setTimeout(() => checkRunwayStatus(taskId), 5000);
       }
-    } catch (err) {
-      console.error("Error polling:", err);
-      // Kalau jaringan nge-blink, tetep coba cek lagi 5 detik kemudian
-      setTimeout(() => checkStatus(taskId), 5000);
+    } catch (error) {
+      console.error("Error cek resi:", error);
+      setStatusText('Terjadi gangguan saat mengecek status.');
+      setIsGenerating(false);
     }
   };
 
   const handleGenerate = async () => {
     if (!characterBase64) {
-      alert("Harap unggah gambar Karakter sebagai referensi utama.");
+      alert("Harap unggah minimal Gambar Karakter sebagai referensi wajah.");
       return;
     }
     
     setIsGenerating(true);
-    setLoadingText("Sutradara AI (Gemini) sedang meracik prompt sinematik...");
-    setOutputUrl(null); // Bersihkan layar jika ada video sebelumnya
+    setOutputVideo(null);
+    setStatusText('1/3: Menganalisis ide dengan Gemini Pro 1.5...');
 
     try {
+      // Kirim ke backend utama
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           image_character: characterBase64,
-          image_product: productBase64,
-          prompt_direction: prompt,
+          image_product: productBase64, // Opsi tambahan jika ingin diproses
+          prompt_direction: prompt
         }),
       });
 
       const data = await response.json();
 
-      if (response.ok && data.success && data.taskId) {
-        // Resi didapat, ganti teks dan mulai cek status Runway
-        setLoadingText("Mesin Runway sedang merender video (Estimasi 1-3 Menit)... Mohon jangan tutup layar ini.");
-        checkStatus(data.taskId);
+      if (response.ok && data.success) {
+        setStatusText('2/3: Prompt matang! Mengantre di server Runway...');
+        // Backend ngasih Task ID, langsung kita mulai proses cek resi
+        setTimeout(() => checkRunwayStatus(data.taskId), 5000);
       } else {
-        alert("Gagal memproses di server. Cek koneksi atau kuota API lo.");
+        alert("Gagal memulai render. Cek log server.");
         setIsGenerating(false);
-        setLoadingText('');
+        setStatusText('');
       }
     } catch (error) {
-      console.error("Error saat mengirim data:", error);
-      alert("Terjadi kesalahan koneksi jaringan saat mengirim ke Vercel.");
+      console.error("Error koneksi awal:", error);
+      alert("Terjadi kesalahan koneksi jaringan.");
       setIsGenerating(false);
-      setLoadingText('');
+      setStatusText('');
     }
   };
 
   const handleDownload = () => {
-    if (!outputUrl) return;
+    if (!outputVideo) return;
     const link = document.createElement('a');
-    link.href = outputUrl;
+    link.href = outputVideo;
     link.download = 'UGC_Cinematic_Ad.mp4';
-    link.target = '_blank';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -133,7 +135,7 @@ export default function UGCPlatform() {
           <h2 className="text-xl font-semibold mb-6">Input Parameter</h2>
           
           <div className="mb-6">
-            <label className="block text-sm font-medium text-neutral-300 mb-2">1. Gambar Karakter (Refernsi Wajah)</label>
+            <label className="block text-sm font-medium text-neutral-300 mb-2">1. Gambar Karakter (Referensi Wajah)</label>
             <div className="flex items-center justify-center w-full">
               <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-neutral-600 border-dashed rounded-lg cursor-pointer bg-neutral-700 hover:bg-neutral-600 transition">
                 {character ? (
@@ -180,29 +182,32 @@ export default function UGCPlatform() {
             disabled={isGenerating}
             className={`w-full py-3 rounded-lg font-semibold transition ${isGenerating ? 'bg-neutral-600 text-neutral-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
           >
-            {isGenerating ? 'Memproses Sistem AI...' : 'Generate Video Iklan'}
+            {isGenerating ? 'Memproses...' : 'Generate Video Iklan'}
           </button>
-
-          {loadingText && (
-            <p className="mt-4 text-sm text-yellow-400 text-center animate-pulse">{loadingText}</p>
+          
+          {/* Indikator Loading Status */}
+          {statusText && (
+            <div className="mt-4 p-3 bg-neutral-700/50 rounded-lg text-sm text-blue-300 text-center animate-pulse">
+              {statusText}
+            </div>
           )}
         </div>
 
         <div className="bg-neutral-800 p-6 rounded-xl border border-neutral-700 shadow-lg flex flex-col">
           <h2 className="text-xl font-semibold mb-6">Hasil Output (Cinematic Video)</h2>
           <div className="flex-grow flex items-center justify-center bg-neutral-900 rounded-lg border border-neutral-700 mb-6 overflow-hidden min-h-[300px]">
-            {outputUrl ? (
-              <video src={outputUrl} controls autoPlay loop className="w-full h-full object-contain bg-black" />
+            {outputVideo ? (
+              <video src={outputVideo} controls autoPlay loop className="w-full h-full object-contain bg-black" />
             ) : (
               <p className="text-neutral-500 text-sm text-center px-4">Area pratinjau hasil.<br/>Video MP4 akan berputar di sini.</p>
             )}
           </div>
           <button 
             onClick={handleDownload}
-            disabled={!outputUrl}
-            className={`w-full py-3 rounded-lg font-semibold transition ${!outputUrl ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500 text-white'}`}
+            disabled={!outputVideo}
+            className={`w-full py-3 rounded-lg font-semibold transition ${!outputVideo ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed' : 'bg-green-600 hover:bg-green-500 text-white'}`}
           >
-            Unduh Hasil (MP4)
+            Unduh Hasil (High-Res MP4)
           </button>
         </div>
       </main>
