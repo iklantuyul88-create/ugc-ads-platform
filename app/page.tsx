@@ -73,38 +73,6 @@ export default function UGCPlatform() {
       setIsGenerating(false);
     }
   };
-    
-    setIsGenerating(true);
-
-    // URL WEBHOOK LO SUDAH DIMASUKKAN DI SINI:
-    const webhookUrl = 'https://webhook.site/1fb0f473-97fb-4cbe-9dc8-fb9db4f8d2d8';
-
-    try {
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image_character: characterBase64,
-          image_product: productBase64,
-          prompt_direction: prompt,
-          timestamp: new Date().toISOString()
-        }),
-      });
-
-      if (response.ok) {
-        alert("Data Berhasil Dikirim ke Webhook Cloud!");
-      } else {
-        alert("Gagal mengirim ke Webhook.");
-      }
-    } catch (error) {
-      console.error("Error saat mengirim data:", error);
-      alert("Terjadi kesalahan koneksi jaringan.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   const handleDownload = () => {
     if (!outputImage) return;
