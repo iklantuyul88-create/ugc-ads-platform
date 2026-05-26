@@ -11,7 +11,6 @@ export default function UGCPlatform() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [outputImage, setOutputImage] = useState<string | null>(null);
 
-  // Fungsi untuk mengubah file gambar menjadi teks Base64
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -47,7 +46,7 @@ export default function UGCPlatform() {
     setIsGenerating(true);
 
     try {
-      // Sekarang kita kirim ke API lokal kita sendiri (aman dari blokir browser)
+      // Mengirim data ke jalur belakang (Backend) kita sendiri
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
@@ -61,8 +60,13 @@ export default function UGCPlatform() {
         }),
       });
 
-      if (response.ok) {
-        alert("Sukses! Server Vercel berhasil mengirim data ke Webhook.");
+      // Menerima balasan dari Backend (termasuk link gambar)
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        // Tampilkan gambar hasil ke layar
+        setOutputImage(data.imageUrl);
+        alert("Sintesis Selesai! Gambar hasil iklan UGC siap diunduh.");
       } else {
         alert("Gagal memproses di server.");
       }
@@ -87,7 +91,7 @@ export default function UGCPlatform() {
   return (
     <div className="min-h-screen bg-neutral-900 text-white p-8 font-sans">
       <header className="max-w-5xl mx-auto mb-10">
-        <h1 className="text-3xl font-bold text-white tracking-tight">AI UGC Ad Generator (Cloud Link)</h1>
+        <h1 className="text-3xl font-bold text-white tracking-tight">AI UGC Ad Generator</h1>
         <p className="text-neutral-400 mt-2">Sintesis karakter dan produk untuk materi iklan otomatis.</p>
       </header>
 
