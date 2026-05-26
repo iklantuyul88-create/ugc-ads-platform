@@ -46,6 +46,36 @@ export default function UGCPlatform() {
     
     setIsGenerating(true);
 
+    try {
+      // Sekarang kita kirim ke API lokal kita sendiri (aman dari blokir browser)
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_character: characterBase64,
+          image_product: productBase64,
+          prompt_direction: prompt,
+          timestamp: new Date().toISOString()
+        }),
+      });
+
+      if (response.ok) {
+        alert("Sukses! Server Vercel berhasil mengirim data ke Webhook.");
+      } else {
+        alert("Gagal memproses di server.");
+      }
+    } catch (error) {
+      console.error("Error saat mengirim data:", error);
+      alert("Terjadi kesalahan koneksi jaringan.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+    
+    setIsGenerating(true);
+
     // URL WEBHOOK LO SUDAH DIMASUKKAN DI SINI:
     const webhookUrl = 'https://webhook.site/1fb0f473-97fb-4cbe-9dc8-fb9db4f8d2d8';
 
